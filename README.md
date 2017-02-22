@@ -14,6 +14,9 @@
 
 	请求多个文件
 	http://localhost:1337/?f=/scripts/demo1.js,/scripts/demo2.js
+	
+	**注意**
+	请求多个文件时，样式和脚本分开请求
   
 	**部署方式**
 	
