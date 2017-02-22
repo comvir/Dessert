@@ -11,12 +11,12 @@ var _fileRepository = [];
 module.exports.getFiles = function (files, callback) {
     if (files) {
         var widthoutLoadFiles = [];
-        var combineFileContent = new Buffer(0);
+        var combineFileContent = '';
         files.forEach(function (filename) {
             var hashcode = filename.getHashCode();
             var file = _fileRepository[hashcode];
             if (file) {
-                combineFileContent = Buffer.concat([combineFileContent, file.content]);
+                combineFileContent +=file.content;
             } else {
                 widthoutLoadFiles.push(filename);
             }
@@ -24,7 +24,7 @@ module.exports.getFiles = function (files, callback) {
         });
         if (widthoutLoadFiles.length) {
             loadFiles(widthoutLoadFiles, function (content) {
-                combineFileContent = Buffer.concat([combineFileContent,content]);
+                combineFileContent +=content;
                 if (callback) {
                     callback(combineFileContent);
                 }
@@ -43,7 +43,7 @@ module.exports.getFiles = function (files, callback) {
  * @param {String} content 拼接内容
  */
 var loadFiles = function (files, callback, content) {
-    var combineFileContent = content||new Buffer(0);
+    var combineFileContent = content || '';
     if (files.length === 0) {
         if (callback) {
             callback(combineFileContent);
@@ -55,8 +55,8 @@ var loadFiles = function (files, callback, content) {
             if (err) {
                 console.log(err);
             } else {
-                var filecontent = new Buffer(data);
-                combineFileContent = Buffer.concat([combineFileContent,filecontent]);
+                var filecontent = data.toString("utf8");
+                combineFileContent += filecontent;
                 var hashcode = filename.getHashCode();
                 var filemodel = new FileModel(filepath, filecontent,filename, hashcode);
                 _fileRepository[hashcode] = filemodel;
