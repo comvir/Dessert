@@ -1,0 +1,2 @@
+E:\work\DemoCollection\StaticResourceSite\StaticResourceSite\obj\Debug\StaticResourceSite.njsprojResolveAssemblyReference.cache
+E:\work\DemoCollection\StaticResourceSite\StaticResourceSite\bin\Microsoft.NodejsTools.WebRole.dll
