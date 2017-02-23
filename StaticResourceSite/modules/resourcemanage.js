@@ -3,6 +3,8 @@ var fs = require("fs");
 var path = require("path");
 //文件库
 var _fileRepository = [];
+//监视器库
+var _watcherRepository = [];
 /**
 *取得文件
 *@param {Array} files 文件列表
@@ -24,8 +26,9 @@ var getFiles = function (files, callback) {
         });
         if (widthoutLoadFiles.length) {
             loadFiles(widthoutLoadFiles, function () {
+                var files = this;
                 getFiles(files, callback);
-            });
+            }.bind(files));
         } else {
             if (callback) {
                 callback(combineFileContent);
@@ -37,7 +40,6 @@ var getFiles = function (files, callback) {
  * 读取文件
  * @param {Array} files 文件列表
  * @param {Function} callback 回调,返回合并的文件内容
- * @param {String} content 拼接内容
  */
 var loadFiles = function (files, callback) {
     if (files.length === 0) {
@@ -51,20 +53,21 @@ var loadFiles = function (files, callback) {
             if (err) {
                 console.log(err);
             } else {
+                var selfdata = this;
                 var filecontent = data.toString("utf8");
-                var hashcode = filename.getHashCode();
-                var filemodel = new FileModel(filepath, filecontent,filename, hashcode);
+                var hashcode = selfdata.filename.getHashCode();
+                var filemodel = new FileModel(selfdata.filepath, filecontent,selfdata.filename, hashcode);
                 _fileRepository[hashcode] = filemodel;
                 watchFile(filemodel);
-                if (files.length === 0) {
-                    if (callback) {
-                        callback();
+                if (selfdata.files.length === 0) {
+                    if (selfdata.callback) {
+                        selfdata.callback();
                     }
                 } else {
-                    loadFiles(files, callback);
+                    loadFiles(selfdata.files, selfdata.callback);
                 }
             }
-        });
+        }.bind({ filename: filename, filepath: filepath, files: files, callback: callback}));
     }
 }
 /**
@@ -72,11 +75,18 @@ var loadFiles = function (files, callback) {
  * @param filemodel
  */
 var watchFile = function (filemodel) {
-    var watcher= fs.watch(filemodel.path, function (eventType, filename) {
-        delete _fileRepository[filemodel.hashCode];
-        watcher.close();
-        var files = [filemodel.filename];
-        loadFiles(files);
-    });
+    if (filemodel) {
+        _watcherRepository[filemodel.hashCode] = fs.watch(filemodel.path, function (eventType, filename) {
+            var filemodel = this;
+            delete _fileRepository[filemodel.hashCode];
+            var watcher = _watcherRepository[filemodel.hashCode];
+            if (watcher) {
+                watcher.close();
+                delete _watcherRepository[filemodel.hashCode];
+            }
+            var files = [filemodel.filename];
+            loadFiles(files);
+        }.bind(filemodel));
+    }
 }
 module.exports.getFiles = getFiles;
