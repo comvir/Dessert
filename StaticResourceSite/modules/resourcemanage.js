@@ -8,7 +8,7 @@ var _fileRepository = [];
 *@param {Array} files 文件列表
 *@param {Function} callback 回调函数，输出合并的文件内容
 */
-module.exports.getFiles = function (files, callback) {
+var getFiles = function (files, callback) {
     if (files) {
         var widthoutLoadFiles = [];
         var combineFileContent = '';
@@ -23,11 +23,8 @@ module.exports.getFiles = function (files, callback) {
 
         });
         if (widthoutLoadFiles.length) {
-            loadFiles(widthoutLoadFiles, function (content) {
-                combineFileContent +=content;
-                if (callback) {
-                    callback(combineFileContent);
-                }
+            loadFiles(widthoutLoadFiles, function () {
+                getFiles(files, callback);
             });
         } else {
             if (callback) {
@@ -42,11 +39,10 @@ module.exports.getFiles = function (files, callback) {
  * @param {Function} callback 回调,返回合并的文件内容
  * @param {String} content 拼接内容
  */
-var loadFiles = function (files, callback, content) {
-    var combineFileContent = content || '';
+var loadFiles = function (files, callback) {
     if (files.length === 0) {
         if (callback) {
-            callback(combineFileContent);
+            callback();
         }
     } else {
         var filename = files.shift();
@@ -56,17 +52,16 @@ var loadFiles = function (files, callback, content) {
                 console.log(err);
             } else {
                 var filecontent = data.toString("utf8");
-                combineFileContent += filecontent;
                 var hashcode = filename.getHashCode();
                 var filemodel = new FileModel(filepath, filecontent,filename, hashcode);
                 _fileRepository[hashcode] = filemodel;
                 watchFile(filemodel);
                 if (files.length === 0) {
                     if (callback) {
-                        callback(combineFileContent);
+                        callback();
                     }
                 } else {
-                    loadFiles(files, callback, combineFileContent);
+                    loadFiles(files, callback);
                 }
             }
         });
@@ -78,12 +73,10 @@ var loadFiles = function (files, callback, content) {
  */
 var watchFile = function (filemodel) {
     var watcher= fs.watch(filemodel.path, function (eventType, filename) {
-        if (eventType === "rename") {
-            delete _fileRepository[filemodel.hashCode];
-            watcher.close();
-        } else if (eventType === "change") {
-            var files = [filemodel.filename];
-            loadFiles(files);
-        }
+        delete _fileRepository[filemodel.hashCode];
+        watcher.close();
+        var files = [filemodel.filename];
+        loadFiles(files);
     });
 }
+module.exports.getFiles = getFiles;
