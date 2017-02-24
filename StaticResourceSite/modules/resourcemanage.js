@@ -9,25 +9,28 @@ var _watcherRepository = [];
 *取得文件
 *@param {Array} files 文件列表
 *@param {Function} callback 回调函数，输出合并的文件内容
+*@param {Array} excludefiles 被排除的文件数组
 */
-var getFiles = function (files, callback) {
+var getFiles = function (files, callback,excludefiles) {
     if (files) {
         var widthoutLoadFiles = [];
         var combineFileContent = '';
         files.forEach(function (filename) {
             var hashcode = filename.getHashCode();
+            if (excludefiles&&excludefiles[hashcode]) {
+                return true;
+            }
             var file = _fileRepository[hashcode];
             if (file) {
                 combineFileContent +=file.content;
             } else {
                 widthoutLoadFiles.push(filename);
             }
-
         });
         if (widthoutLoadFiles.length) {
-            loadFiles(widthoutLoadFiles, function () {
+            loadFiles(widthoutLoadFiles, function (excludefiles) {
                 var files = this;
-                getFiles(files, callback);
+                getFiles(files, callback, excludefiles);
             }.bind(files));
         } else {
             if (callback) {
@@ -39,9 +42,10 @@ var getFiles = function (files, callback) {
 /**
  * 读取文件
  * @param {Array} files 文件列表
- * @param {Function} callback 回调,返回合并的文件内容
+ * @param {Function} callback 回调,返回被排除的文件hashCode数组
+ * @param {Array} excludefiles 被排除的文件数组hashCode数组
  */
-var loadFiles = function (files, callback) {
+var loadFiles = function (files, callback, excludefiles) {
     if (files.length === 0) {
         if (callback) {
             callback();
@@ -50,24 +54,27 @@ var loadFiles = function (files, callback) {
         var filename = files.shift();
         var filepath = path.join('./public', filename);
         fs.readFile(filepath, function (err, data) {
+            var selfdata = this;
+            var hashcode = selfdata.filename.getHashCode();
             if (err) {
-                console.log(err);
+                if (!selfdata.excludefiles) {
+                    selfdata.excludefiles = [];
+                }
+                selfdata.excludefiles[hashcode] = true;
             } else {
-                var selfdata = this;
-                var filecontent = data.toString("utf8");
-                var hashcode = selfdata.filename.getHashCode();
+                 var filecontent = data.toString("utf8");
                 var filemodel = new FileModel(selfdata.filepath, filecontent,selfdata.filename, hashcode);
                 _fileRepository[hashcode] = filemodel;
                 watchFile(filemodel);
-                if (selfdata.files.length === 0) {
-                    if (selfdata.callback) {
-                        selfdata.callback();
-                    }
-                } else {
-                    loadFiles(selfdata.files, selfdata.callback);
-                }
             }
-        }.bind({ filename: filename, filepath: filepath, files: files, callback: callback}));
+            if (selfdata.files.length === 0) {
+                if (selfdata.callback) {
+                    selfdata.callback(selfdata.excludefiles);
+                }
+            } else {
+                loadFiles(selfdata.files, selfdata.callback, selfdata.excludefiles);
+            }
+        }.bind({ filename: filename, filepath: filepath, files: files, callback: callback, excludefiles: excludefiles}));
     }
 }
 /**
